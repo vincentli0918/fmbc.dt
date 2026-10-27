@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自動排點邏輯決策樹</title>
+    <style>
+        body { 
+            margin: 0; 
+            padding: 20px; 
+            font-family: "PingFang TC", "Microsoft JhengHei", "Helvetica Neue", Helvetica, Arial, sans-serif; 
+            background-color: #f4f7f6; 
+            color: #333;
+        }
+        .container { 
+            background: #ffffff; 
+            padding: 30px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); 
+            max-width: 1000px; 
+            margin: 0 auto; 
+            overflow-x: auto;
+        }
+        h2 { 
+            text-align: center; 
+            color: #2c3e50; 
+            margin-bottom: 20px; 
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+        .mermaid { 
+            display: flex;
+            justify-content: center;
+        }
+        .instructions {
+            text-align: center;
+            font-size: 0.9em;
+            color: #7f8c8d;
+            margin-top: 20px;
+        }
+    </style>
+    <!-- 引入最新版 Mermaid 核心庫，直接在網頁上繪圖 -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ 
+            startOnLoad: true, 
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e3f2fd',
+                primaryTextColor: '#1565c0',
+                primaryBorderColor: '#64b5f6',
+                lineColor: '#78909c',
+                secondaryColor: '#f3e5f5',
+                tertiaryColor: '#e8f5e9'
+            },
+            flowchart: {
+                htmlLabels: true,
+                curve: 'basis'
+            }
+        });
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h2>自動排點邏輯決策樹</h2>
+        <div class="mermaid">
+            graph TD
+                Start((開始排點)) --> Trigger{選擇觸發方式}
+                Trigger -->|自動排滿空場| TargetA["決定目標: 先補未滿4人球場，再補全空場<br>一場一場處理，不回溯"]
+                Trigger -->|自動建議| TargetB["決定目標: 只補指定的單一上場順位"]
+                
+                TargetA --> Pool{"(1) 待命區人員篩選"}
+                TargetB --> Pool
+
+                Pool -->|否: 未報到/請假/在場上/休息區/無時間紀錄| Exclude1["略過此人，不排入"]
+                Pool -->|是: 已報到、有時間紀錄且目前空閒| GenCombinations["(2) 組合配對與條件檢查"]
+
+                GenCombinations --> PartnerCheck{"搭檔綁定檢查"}
+                PartnerCheck -->|另一半在打球/休息/沒報到| Exclude2["略過此人，不硬拆去配別人"]
+                PartnerCheck -->|無搭檔或搭檔皆可上場| NormalCheck["(3) 一般排點檢查"]
+
+                NormalCheck --> NormalCond{"檢查條件:<br>A) 無同場限制: 非連續2場同打<br>B) 級數差距: 全員最大差距 ≤ 3級<br>※搭檔兩人之間不受此限"}
+                
+                NormalCond -->|A與B皆符合| NormalList["加入一般排點候選清單"]
+                NormalCond -->|不符合| MixedCheck["(4) 混雙模式檢查 - 退而求其次"]
+
+                MixedCheck --> MixedCond{"檢查條件:<br>A) 無同場限制<br>B) 兩隊強者相差 ≤ 2級<br>C) 兩隊弱者相差 ≤ 2級"}
+                
+                MixedCond -->|符合| MixedList["加入混雙模式候選清單<br>該場加註混雙標記"]
+                MixedCond -->|不符合| Reject["放棄排入，版面留空<br>提示擋下的原因"]
+
+                NormalList --> Sorting{"(5) 候選組合選拔賽<br>僅在同一清單內比較"}
+                MixedList --> Sorting
+
+                Sorting --> Sort1["第一關: 等候時間最長者優先"]
+                Sort1 -->|平手| Sort2["第二關: 總場次打最少者優先"]
+                Sort2 -->|平手| Sort3["第三關: 4人同場次數少優先"]
+                Sort3 -->|平手| Sort4["第四關: 組合內級數最大差距最小者優先"]
+                
+                Sort1 -.->|分出高下| Result((決定最終上場組合))
+                Sort2 -.->|分出高下| Result
+                Sort3 -.->|分出高下| Result
+                Sort4 -.->|分出高下| Result
+        </div>
+        <p class="instructions">※ 直接在瀏覽器中檢視此頁面即可呈現完整圖表，無需使用 Markdown 軟體。</p>
+    </div>
+</body>
+</html>
